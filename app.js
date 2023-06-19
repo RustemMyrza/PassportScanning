@@ -65,7 +65,7 @@ function sharpImage(image){
   sharp('Images/'+ image)
   //.sharpen(0.5)
   .greyscale()
-  .linear(1.6, 0)
+  .linear(1.75, 0)
   .toFile( 'Images/edited_' + image, (err, info) => {
     if (err) {
       console.error(err);
@@ -141,7 +141,7 @@ function textToArray(textOfTesseract) {
 
 //Function for saving a data into json file
 
-function dataToJson(text, obj){
+function dataToJson(text, obj, res){
   text = textToArray(text)
   let numericData = []
   numericData = isNumber(text, numericData)
@@ -168,6 +168,51 @@ function dataToJson(text, obj){
         arr.push(obj);
 
         fs.writeFile('db.json', JSON.stringify(arr), (err) => {
+          let tableHtml = `
+          <h1>Passport data</h1>
+          <table id="my_table">
+            <tr>
+              <th>Name</th>
+              <th>Surname</th>
+              <th>Nationality</th>
+              <th>Date of birth</th>
+              <th>Passport number</th>
+              <th>Issue date</th>
+              <th>Isued byr</th>
+              <th>Valid until</th>
+              <th>Place of birth</th>
+              <th>IIN</th>
+            </tr>`;
+
+
+
+
+
+
+
+
+      for (let i = 0; i < arr.length; i++) {
+        let obj = arr[i];
+        tableHtml += `
+          <tr>
+            <td>${obj.first_name}</td>
+            <td>${obj.last_name}</td>
+            <td>${obj.citizenship}</td>
+            <td>${obj.date_of_birth}</td>
+            <td>${obj.passport_number}</td>
+            <td>${obj.issue_date}</td>
+            <td>${obj.issued_by}</td>
+            <td>${obj.valid_until}</td>
+            <td>${obj.place_of_birth}</td>
+            <td>${obj.IIN}</td>
+          </tr>`;
+      }
+
+
+
+
+      tableHtml += `</table>`;
+      res.send(tableHtml)
           if (err) throw err;
           console.log('Data written to file');
         })
@@ -220,8 +265,7 @@ app.post('/result', upload.single("image"), (req, res) => {
   tsr.recognize('Images/edited_' + fullName, 'eng+rus', {logger: e => console.log(e.progress)})
   .then(result => {
       const text = result.data.text;
-      dataToJson(text, passportData)
-      res.send(text)
+      dataToJson(text, passportData, res)
   })
   .catch(error => {
     console.error(error);

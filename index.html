@@ -5,8 +5,33 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300&display=swap" rel="stylesheet">
+    <style>
+        body{
+            text-align: center;
+            background-color: bisque;
+            font-family: 'Roboto Condensed', sans-serif;
+        }
+        input[type=submit]  {
+            font-family: 'Roboto Condensed', sans-serif;
+            padding: 16px 32px;
+            border-radius: 15px;
+            background-color: rgb(145, 130, 113);
+            border-color: rgba(240, 248, 255, 0);
+            font-size: 16px;
+        }
+        input:hover[type="submit"]
+		{
+			background: rgb(201, 180, 157);
+            transition: 0.5s;
+		}
+
+    </style>
 </head>
 <body>
+    <h1>Input the data</h1>
     <form action="/result" method="post" enctype="multipart/form-data">
         <input type="file" id="file" name="image" />
         <input type="submit" value="Show the text">
