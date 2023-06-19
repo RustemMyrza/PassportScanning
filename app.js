@@ -2,47 +2,170 @@ const tsr = require("tesseract.js")
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const express = express();
+const app = express();
 const multer = require('multer');
+const sharp = require("sharp")
 const port = 3001;
 
 
 
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+function findData(arr) {
+  let surn, name, nation, placeBirth;
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyC_HgIbrNUYJYZ3lJpY8spqgKE8LKj4xKs",
-  authDomain: "firstoffirst-ae203.firebaseapp.com",
-  projectId: "firstoffirst-ae203",
-  storageBucket: "firstoffirst-ae203.appspot.com",
-  messagingSenderId: "982110155640",
-  appId: "1:982110155640:web:8fb8d80edb07d67eaa8e8d",
-  measurementId: "G-3T3ZQ5LDK0"
-};
+  for (let i = 0; i < arr.length; i++) {
+    for (let j = 0; j < arr[j].length; j++) {
+      if (arr[i][j] === "SURNAME") {
+        surn = arr[i + 2][j];
+      } else if (arr[i][j] === "NAME") {
+        name = arr[i + 2][j];
+      } else if (arr[i][j] === "NATIONALITY") {
+        nation = arr[i + 1][j];
+      } else if (arr[i][j] === "PLACE") {
+        placeBirth = arr[i + 1][1];
+      }
+    }
+  }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(express);
+  let result = [surn, name, nation, placeBirth];
+  return result;
+}
 
 
+
+function findAuthority(arr){
+  for (let i = 0; i < arr.length; i++){
+    for(let j = 0; j < arr[i].length; j++){
+      if(arr[i][j] === "AUTHORITY"){
+        return arr[i+1].join(' ')
+      }
+    }
+  }
+}
+
+
+
+
+
+function textToArray(textOfTesseract, func) {
+  textOfTesseract = textOfTesseract.split("\n");
+  for (let i = 0; i < textOfTesseract.length; i++) {
+    textOfTesseract[i] = textOfTesseract[i].split(" ");
+    func(textOfTesseract[i]); // Call the function passed as a parameter
+    if (textOfTesseract[i].length == 0) {
+      delete textOfTesseract[i];
+    }
+  }
+  textOfTesseract = textOfTesseract.filter(n => n);
+  return textOfTesseract;
+}
+
+
+
+function sharpImage(image){
+  sharp('Images/'+ image)
+  //.sharpen(0.5)
+  .greyscale()
+  .linear(1.6, 0)
+  .toFile( 'Images/edited_' + image, (err, info) => {
+    if (err) {
+      console.error(err);
+    } else {
+      console.log('Image sharpened successfully');
+    }
+  });
+}
+
+
+
+
+function isNumber(arr_1, arr_2) {
+  for (let i = 0; i < arr_1.length; i++){
+    for(let j = 0; j < arr_1[i].length; j++){
+      if (!isNaN(arr_1[i][j]) == true && arr_1[i][j].length == 12) {
+        console.log(arr_1[i][j] + "was pushed")
+        arr_2.push(arr_1[i][j])
+      }
+      else if(!isNaN(arr_1[i][j].split('.').join('')) == true && arr_1[i][j].length == 10){
+        arr_2.push(arr_1[i][j])
+      }
+      else{
+        continue;
+      }
+    }
+  }
+  console.log(arr_2)
+  return arr_2;
+}
+
+
+
+
+function checkText(text) {
+  const regex = /^[A-Z0-9.]+$/;
+  return regex.test(text);
+}
+
+
+
+
+
+
+
+
+function textFilter(arr) {
+  const filteredArr = arr.filter((text) => checkText(text) && text.length > 1);
+  const deletedCount = arr.length - filteredArr.length;
+  arr.length = 0; // Clear the original array
+  Array.prototype.push.apply(arr, filteredArr); // Copy the filtered elements back to the original array
+  console.log(`Deleted ${deletedCount} element(s).`);
+}
+
+
+
+function textToArray(textOfTesseract) {
+  textOfTesseract = textOfTesseract.split("\n")
+  for (let i = 0; i < textOfTesseract.length; i++){
+    textOfTesseract[i] = textOfTesseract[i].split(" ")
+   textFilter(textOfTesseract[i])
+    if(textOfTesseract[i].length == 0){
+      delete textOfTesseract[i]
+    }
+  }
+  console.log(textOfTesseract)
+  textOfTesseract = textOfTesseract.filter(n => n)
+  return textOfTesseract
+}
 
 
 
 
 //Function for saving a data into json file
 
-function dataToJson(text){
-    text = text.split(" ")
-    fs.readFile('db.json', 'utf8', (err, data) => {
+function dataToJson(text, obj){
+  text = textToArray(text)
+  let numericData = []
+  numericData = isNumber(text, numericData)
+  let authority = findAuthority(text)
+  let stringData = findData(text)
+
+  obj = {
+    first_name: stringData[1],
+    last_name: stringData[0],
+    citizenship: stringData[2],
+    date_of_birth: numericData[1],
+    passport_number: text[1][text[1].length - 1],
+    issue_date: numericData[2],
+    issued_by: authority,
+    valid_until: numericData[3],
+    place_of_birth: stringData[3],
+    IIN: numericData[0]
+  }
+
+    //textFilter(text)
+  fs.readFile('db.json', 'utf8', (err, data) => {
 
         let arr = JSON.parse(data);
-        arr.push(text);
+        arr.push(obj);
 
         fs.writeFile('db.json', JSON.stringify(arr), (err) => {
           if (err) throw err;
@@ -52,7 +175,18 @@ function dataToJson(text){
 )}
 
 
-
+let passportData = {
+  first_name: '',
+  last_name: '',
+  citizenship:'',
+  date_of_birth: '',
+  passport_number: '',
+  issue_date: '',
+  issued_by: '',
+  valid_until: '',
+  place_of_birth: '',
+  IIN: ''
+}
 
 
 //function which saved images
@@ -71,6 +205,7 @@ const storage = multer.diskStorage({
   });
   const upload = multer({storage: storage})
 
+console.log(upload.storage.DiskStorage)
 
 
 
@@ -80,17 +215,17 @@ const storage = multer.diskStorage({
 
 //post function with text identifier
 
-express.post('/result', upload.single("image"), (req, res) => {
-    tsr.recognize("Images/" + fullName, 'eng+rus', {logger: e => console.log("ok")})
-    .then(result => {
-
-        const text = result.data.text;
-        dataToJson(text)
-        res.send(text)
-      })
-      .catch(error => {
-        console.error(error);
-      });
+app.post('/result', upload.single("image"), (req, res) => {
+  sharpImage(fullName)
+  tsr.recognize('Images/edited_' + fullName, 'eng+rus', {logger: e => console.log(e.progress)})
+  .then(result => {
+      const text = result.data.text;
+      dataToJson(text, passportData)
+      res.send(text)
+  })
+  .catch(error => {
+    console.error(error);
+  });
 })
 
 
@@ -99,9 +234,24 @@ express.post('/result', upload.single("image"), (req, res) => {
 
 //get function
 
-express.get('/', (req, res) => {
+app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '/index.html'));
   });
 
 
-express.listen(port)
+app.listen(port)
+
+
+
+
+
+
+
+
+ /* console.log(text[4][0])
+  console.log(text[7][0])
+  console.log(text[9][0], text[9][1])
+  console.log(text[11][0], text[11][1])
+  console.log(text[13][0])
+  console.log(text[15][1])
+  console.log(text[17])*/
